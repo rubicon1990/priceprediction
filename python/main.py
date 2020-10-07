@@ -14,7 +14,6 @@ from python.utils import *
 
 tf.keras.backend.set_floatx('float64')
 
-
 if __name__ == "__main__":
 
     # parameters
@@ -89,9 +88,6 @@ if __name__ == "__main__":
 
     model.summary()
 
-    # Loss plotting
-    plot_loss_history(loss_history, n_epochs)
-
     # Out-of-sample test (Evaluation)
     y_test_pred = model(x_test)
     mse = metrics.mean_squared_error(y_test, y_test_pred).numpy().mean()
@@ -103,12 +99,19 @@ if __name__ == "__main__":
     print('MAE - %.6f' % mae)
     print('MAPE - %.6f' % mape)
 
+    # Loss plotting
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plot_loss_history(loss_history, n_epochs)
+
+    plt.subplot(1, 2, 2)
     plt.plot(y_test[:, 0], label='test true', color='black')
     plt.plot(y_test_pred[:, 0], label='test prediction', color='green')
     plt.title('test open stock price')
     plt.xlabel('time [days]')
     plt.ylabel('normalized price')
     plt.legend(loc='best')
+
     plt.show()
 
     # Model save
