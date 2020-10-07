@@ -37,9 +37,9 @@ if __name__ == "__main__":
     sc = MinMaxScaler(feature_range=(0, 1))
 
     sorted_stock_price = raw_stock_price.sort_index()
-    stock_price, sc = normalize_data(sorted_stock_price, sc)
+    norm_stock_price, sc = normalize_data(sorted_stock_price, sc)
 
-    data = extract_data(stock_price, seq_len)
+    data = extract_data(norm_stock_price, seq_len)
     x_train, y_train, x_valid, y_valid, x_test, y_test = \
         train_valid_test_split(data, valid_size_percent, test_size_percent)
 
@@ -90,10 +90,17 @@ if __name__ == "__main__":
 
     # Out-of-sample test (Evaluation)
     y_test_pred = model(x_test)
-    mse = metrics.mean_squared_error(y_test, y_test_pred).numpy().mean()
+
+    true_price = sc.inverse_transform(y_test)
+    pred_price = sc.inverse_transform(y_test_pred)
+
+    true_open = true_price[:, 0]
+    pred_open = pred_price[:, 0]
+
+    mse = metrics.mean_squared_error(true_open, pred_open).numpy().mean()
     rmse = math.sqrt(mse)
-    mae = metrics.mean_absolute_error(y_test, y_test_pred).numpy().mean()
-    mape = metrics.mean_absolute_percentage_error(y_test, y_test_pred).numpy().mean()
+    mae = metrics.mean_absolute_error(true_open, pred_open).numpy().mean()
+    mape = metrics.mean_absolute_percentage_error(true_open, pred_open).numpy().mean()
     print('MSE - %.6f' % mse)
     print('RMSE - %.6f' % rmse)
     print('MAE - %.6f' % mae)
@@ -105,8 +112,8 @@ if __name__ == "__main__":
     plot_loss_history(loss_history, n_epochs)
 
     plt.subplot(1, 2, 2)
-    plt.plot(y_test[:, 0], label='test true', color='black')
-    plt.plot(y_test_pred[:, 0], label='test prediction', color='green')
+    plt.plot(true_open, label='test true', color='black')
+    plt.plot(pred_open, label='test prediction', color='green')
     plt.title('test open stock price')
     plt.xlabel('time [days]')
     plt.ylabel('normalized price')
