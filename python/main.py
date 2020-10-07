@@ -29,8 +29,7 @@ if __name__ == "__main__":
     test_size_percent = 10
 
     # dir for model save
-    checkpoint_path = "training_1/cp.ckpt"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
+    saved_model_path = "../saved_model"
 
     # Data preparation
     df = pd.read_csv("../input/prices-split-adjusted.csv", index_col=0)
@@ -94,11 +93,23 @@ if __name__ == "__main__":
     plot_loss_history(loss_history, n_epochs)
 
     # Out-of-sample test (Evaluation)
-    mse = metrics.mean_squared_error(y_test, model(x_test)).numpy().mean()
+    y_test_pred = model(x_test)
+    mse = metrics.mean_squared_error(y_test, y_test_pred).numpy().mean()
     rmse = math.sqrt(mse)
-    mae = metrics.mean_absolute_error(y_test, model(x_test)).numpy().mean()
-    mape = metrics.mean_absolute_percentage_error(y_test, model(x_test)).numpy().mean()
+    mae = metrics.mean_absolute_error(y_test, y_test_pred).numpy().mean()
+    mape = metrics.mean_absolute_percentage_error(y_test, y_test_pred).numpy().mean()
     print('MSE - %.6f' % mse)
     print('RMSE - %.6f' % rmse)
     print('MAE - %.6f' % mae)
     print('MAPE - %.6f' % mape)
+
+    plt.plot(y_test[:, 0], label='test true', color='black')
+    plt.plot(y_test_pred[:, 0], label='test prediction', color='green')
+    plt.title('test open stock price')
+    plt.xlabel('time [days]')
+    plt.ylabel('normalized price')
+    plt.legend(loc='best')
+    plt.show()
+
+    # Model save
+    model_save(model, x_train, saved_model_path)

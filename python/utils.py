@@ -17,3 +17,16 @@ def plot_loss_history(loss_history, n_epochs):
     plt.show()
 
 
+def plot_timeseries(timeseries):
+    pass
+
+
+def model_save(model, input, path):
+    model._set_inputs(input)
+    model.save(path)
+
+
+def model_load(path):
+    return tf.keras.models.load_model(path)
+
+
