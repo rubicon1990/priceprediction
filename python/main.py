@@ -22,12 +22,12 @@ Most ticker longer than 1000 values
 if __name__ == "__main__":
 
     # parameters
-    # ticker = 'EQIX'
-    # seq_len = 30
-    # h_dim = 10
+    ticker = 'EQIX'
+    seq_len = 30
+    h_dim = 10
     n_epochs = 100
     batch_size = 32
-    # learning_rate = 0.001
+    learning_rate = 0.001
     dropout_rate = 0.2
 
     # split data in 80%/10%/10% train/validation/test sets
@@ -38,23 +38,14 @@ if __name__ == "__main__":
     # dir for model save
     saved_model_path = "../saved_model"
 
-    param_grad = {
-        'tickers': ['EQIX', 'JPM', 'R', 'HES', 'COST'],
-        'seq_lens': [21, 31, 45, 61],
-        'h_dims': [10, 15, 20, 25, 30],
-        'learning_rates': [0.001, 0.01, 0.1]
-    }
-
     # Data preparation
     df = pd.read_csv("../input/prices-split-adjusted.csv", index_col=0)
-
-
     raw_stock_price = df[df.symbol == ticker][['open', 'high', 'low', 'close', 'volume']]
 
     sc = MinMaxScaler(feature_range=(0, 1))
 
     sorted_stock_price = raw_stock_price.sort_index()
-    norm_stock_price, sc = normalize_data(sorted_stock_price, sc)
+    norm_stock_price = normalize_data(sorted_stock_price, sc)
 
     data = extract_data(norm_stock_price, seq_len)
     x_train, y_train, x_valid, y_valid, x_test, y_test = \

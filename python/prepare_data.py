@@ -7,7 +7,7 @@ import os
 # function for normalization of data
 def normalize_data(pdf, normalizer):
     values = normalizer.fit_transform(pdf.values)
-    return pd.DataFrame(values, columns=pdf.columns), normalizer
+    return pd.DataFrame(values, columns=pdf.columns)
 
 
 # function to create train, validation, test data given stock data and sequence length
