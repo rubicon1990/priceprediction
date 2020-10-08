@@ -11,28 +11,45 @@ from tensorflow.keras.layers import Dropout, Dense, SimpleRNN, LSTM, GRU
 import tensorflow.keras.metrics as metrics
 from python.prepare_data import *
 from python.utils import *
+from python.nn_engine import *
 
-tf.keras.backend.set_floatx('float64')
+"""
+Most ticker longer than 1000 values
+
+"""
+
 
 if __name__ == "__main__":
 
     # parameters
-    ticker = 'EQIX'
-    seq_len = 20
-    n_epochs = 1
+    # ticker = 'EQIX'
+    # seq_len = 30
+    # h_dim = 10
+    n_epochs = 100
     batch_size = 32
-    learning_rate = 0.02
+    # learning_rate = 0.001
+    dropout_rate = 0.2
 
     # split data in 80%/10%/10% train/validation/test sets
-    valid_size_percent = 10
+    valid_size_percent = 0
     test_size_percent = 10
+    validation_split = 0.2
 
     # dir for model save
     saved_model_path = "../saved_model"
 
+    param_grad = {
+        'tickers': ['EQIX', 'JPM', 'R', 'HES', 'COST'],
+        'seq_lens': [21, 31, 45, 61],
+        'h_dims': [10, 15, 20, 25, 30],
+        'learning_rates': [0.001, 0.01, 0.1]
+    }
+
     # Data preparation
     df = pd.read_csv("../input/prices-split-adjusted.csv", index_col=0)
-    raw_stock_price = df[df.symbol == ticker][['open', 'high', 'low', 'close']]
+
+
+    raw_stock_price = df[df.symbol == ticker][['open', 'high', 'low', 'close', 'volume']]
 
     sc = MinMaxScaler(feature_range=(0, 1))
 
@@ -44,52 +61,20 @@ if __name__ == "__main__":
         train_valid_test_split(data, valid_size_percent, test_size_percent)
 
     # Model training
-    model = tf.keras.Sequential([
-        SimpleRNN(2, activation='tanh'),
-        Dropout(0.2),
-        Dense(data.shape[-1])
-    ])
-
     optimizer = tf.keras.optimizers.Adam(learning_rate)
-    loss_object = tf.keras.losses.mean_squared_error
+    nn_model = gru(h_dim, dropout_rate, data.shape[-1])
+    nn_model.compile(optimizer=optimizer,
+                     loss="mse",
+                     metrics=["mae", "mape", "mse"])
 
-    data_train = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-    loss_history = {'train': [], 'valid': []}
-
-    iteration = 0
-
-    mse_train = tf.math.reduce_mean(loss_object(y_train, model(x_train)))
-    mse_valid = tf.math.reduce_mean(loss_object(y_valid, model(x_valid)))
-    print('%d epochs, %d iterations: MSE train/valid = %.6f/%.6f'
-          % (0, iteration, mse_train, mse_valid))
-
-    for epoch in range(1, n_epochs + 1):
-        # TODO: set buffer_size and seed
-        ds = data_train.shuffle(x_train.shape[0]).batch(batch_size)
-
-        for x, y in ds:
-            if x.shape[0] == batch_size:
-                with tf.GradientTape() as tape:
-                    predictions = model(x)
-                    loss = loss_object(y, predictions)
-
-                grads = tape.gradient(loss, model.trainable_variables)
-                optimizer.apply_gradients(zip(grads, model.trainable_variables))
-
-                loss_history['train'].append(loss_object(y_train, model(x_train)).numpy().mean())
-                loss_history['valid'].append(loss_object(y_valid, model(x_valid)).numpy().mean())
-                iteration += 1
-
-        if epoch % 5 == 0:
-            mse_train = tf.math.reduce_mean(loss_object(y_train, model(x_train)))
-            mse_valid = tf.math.reduce_mean(loss_object(y_valid, model(x_valid)))
-            print('%d epochs, %d iterations: MSE train/valid = %.6f/%.6f'
-                  % (epoch, iteration, mse_train, mse_valid))
-
-    model.summary()
+    history = nn_model.fit(x_train, y_train,
+                           batch_size=batch_size, epochs=n_epochs,
+                           shuffle=True,
+                           validation_split=validation_split,
+                           verbose=2)
 
     # Out-of-sample test (Evaluation)
-    y_test_pred = model(x_test)
+    y_test_pred = nn_model(x_test)
 
     true_price = sc.inverse_transform(y_test)
     pred_price = sc.inverse_transform(y_test_pred)
@@ -107,6 +92,9 @@ if __name__ == "__main__":
     print('MAPE - %.6f' % mape)
 
     # Loss plotting
+    loss_history = {'train': history.history['loss'],
+                    'valid': history.history['val_loss']}
+
     plt.figure(figsize=(12, 5))
     plt.subplot(1, 2, 1)
     plot_loss_history(loss_history, n_epochs)
@@ -119,7 +107,8 @@ if __name__ == "__main__":
     plt.ylabel('normalized price')
     plt.legend(loc='best')
 
+    plt.tight_layout()
     plt.show()
 
     # Model save
-    model_save(model, x_train, saved_model_path)
+    model_save(nn_model, saved_model_path)
